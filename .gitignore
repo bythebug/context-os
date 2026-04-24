@@ -39,9 +39,8 @@ sdk/typescript/dist/
 
 # ── Claude Code local settings & AI agent context ────────────────────────────
 .claude/settings.local.json
-CLAUDE.md
-MEMORY.md
 
 # ── Logs ─────────────────────────────────────────────────────────────────────
 *.log
 logs/
+.gstack/
