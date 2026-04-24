@@ -4,7 +4,7 @@
 
 Model-agnostic memory infrastructure for LLM applications.
 
-**GitHub:** [github.com/bythebug/contextos](https://github.com/bythebug/contextos)
+**GitHub:** [github.com/bythebug/context-os](https://github.com/bythebug/context-os)
 
 Any AI client — Claude, GPT, a custom agent, a terminal tool — calls two endpoints:
 write after a session, query before the next one. ContextOS extracts meaningful memory

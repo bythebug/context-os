@@ -24,4 +24,4 @@ cli = [
 contextos = "contextos.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/bythebug/contextos"
+Homepage = "https://github.com/bythebug/context-os"
