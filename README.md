@@ -537,7 +537,9 @@ no API key needed). The model is pre-warmed at startup. If you switch to
 | Vector store | Postgres + pgvector | Single DB handles relational + vector, no separate infra |
 | Hot cache | Redis | 60s TTL on GET /memory — skips embedding + DB on repeat queries |
 | Auth | Bearer API key, SHA-256 hash | OpenAI-familiar pattern every LLM dev already knows |
-| Migrations | Alembic | Versioned schema changes, autogenerate support |
+| Migrations | Alembic | Versioned schema changes, async-compatible |
+| Retrieval | BM25 (Postgres tsvector) + cosine (pgvector), fused via RRF | Hybrid catches keyword matches vector search misses |
+| Decay | Exponential, 30-day half-life | Stale fragments lose weight automatically over time |
 
 ### Data model
 
@@ -545,6 +547,7 @@ no API key needed). The model is pre-warmed at startup. If you switch to
 apps                 — each third-party client that connects to ContextOS
 api_keys             — SHA-256 hashed keys, belong to an app
 fragments            — memory units: content + embedding + type + importance + metadata
+                       superseded_by_id → self-FK; NULL = active, non-NULL = replaced by newer fragment
 dead_letter_sessions — failed extraction jobs after all retries exhausted
 ```
 
@@ -672,7 +675,7 @@ Full pipeline end-to-end. 5/5 smoke tests passing.
 
 ## Current status
 
-**Branch:** `master` · **Stage:** M5 complete · **Health:** mypy 0 errors · ruff 0 issues · 5/5 smoke tests passing
+**Branch:** `main` · **Stage:** M5 complete · **Health:** mypy 0 errors · ruff 0 issues · 5/5 smoke tests passing
 
 Running locally with `EXTRACTION_PROVIDER=mock` and `EMBEDDING_PROVIDER=local` —
 no API keys required for development.
