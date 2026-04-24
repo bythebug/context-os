@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ContextOS — Memory Infrastructure for LLM Applications</title>
-  <meta name="description" content="Model-agnostic memory infrastructure for LLM applications. Any AI client writes memory after a session, queries before the next one." />
+  <title>ContextOS — Your AI tools share one brain</title>
+  <meta name="description" content="ContextOS gives all your AI tools a shared memory layer. Claude, GPT, your custom agent — they all read from the same store that runs on your machine. Your data. No vendor." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -363,10 +363,12 @@
 <section class="hero">
   <div class="hero-glow"></div>
   <div class="badge"><span class="badge-dot"></span> Open Source · MIT License</div>
-  <h1>Memory infrastructure<br>for <span class="grad">LLM applications</span></h1>
+  <h1>Your AI tools have<br>different <span class="grad">brains.</span></h1>
+  <p style="font-size:1.6rem;font-weight:700;color:var(--text);margin:0 0 1rem;letter-spacing:-0.02em">ContextOS gives them one.</p>
   <p class="hero-sub">
-    ContextOS decouples memory from the model. Any AI client — Claude, GPT, a custom agent —
-    calls two endpoints. The model changes. The memory doesn't.
+    Claude remembers Claude. ChatGPT remembers ChatGPT. Your custom agent remembers nothing.
+    ContextOS is the shared memory layer that runs on your machine — any LLM reads from it,
+    any LLM writes to it. Your data. No vendor lock-in.
   </p>
   <div class="hero-actions">
     <a class="btn btn-primary" href="#quickstart">Get started</a>
@@ -413,15 +415,16 @@
 <section id="how-it-works">
   <div class="container">
     <div class="section-tag">How it works</div>
-    <h2>Two endpoints. Persistent memory.</h2>
+    <h2>One memory store. Every AI tool.</h2>
     <p class="section-sub">
-      ContextOS sits outside your LLM stack. Your app calls it at exactly two points — nothing else changes.
+      ContextOS sits between your apps and your LLMs. Write from any app. Read from any app.
+      The same <code style="color:var(--primary-g);font-family:'JetBrains Mono',monospace;font-size:0.85em">user_id</code> is the only key — that's all it takes for cross-app memory.
     </p>
     <div class="steps">
       <div class="step-card">
         <div class="step-num">01</div>
-        <h3>Write after a conversation</h3>
-        <p>POST the conversation text. ContextOS extracts discrete memory fragments using an LLM, embeds them, deduplicates, and stores. Returns 202 immediately — extraction runs in the background.</p>
+        <h3>Write after any conversation</h3>
+        <p>POST the conversation from Claude, GPT, or your custom agent. ContextOS extracts discrete memory fragments, embeds them, deduplicates, and stores. Returns 202 immediately — extraction runs in the background.</p>
         <div class="step-pipeline">
           <div class="pipeline-item"><div class="pipeline-dot" style="background:#60a5fa"></div>LLM extraction (Anthropic / OpenAI / mock)</div>
           <div class="pipeline-item"><div class="pipeline-dot" style="background:#a78bfa"></div>Embed (local sentence-transformers or OpenAI)</div>
@@ -431,8 +434,8 @@
       </div>
       <div class="step-card">
         <div class="step-num">02</div>
-        <h3>Query before an LLM call</h3>
-        <p>GET memory for a user with your query string. ContextOS runs hybrid search, applies decay scoring, and returns top-k fragments plus a <code style="color:var(--primary-g);font-family:'JetBrains Mono',monospace;font-size:0.8em">prompt_block</code> ready to inject into your system prompt.</p>
+        <h3>Query before any LLM call</h3>
+        <p>GET memory for a user with your query string — from any app, any model. ContextOS runs hybrid search, applies decay scoring, and returns a <code style="color:var(--primary-g);font-family:'JetBrains Mono',monospace;font-size:0.8em">prompt_block</code> ready to inject. Memory written by your GPT app is now available to your Claude app.</p>
         <div class="step-pipeline">
           <div class="pipeline-item"><div class="pipeline-dot" style="background:#60a5fa"></div>Redis cache check (60s TTL)</div>
           <div class="pipeline-item"><div class="pipeline-dot" style="background:#a78bfa"></div>BM25 (Postgres FTS) + cosine vector search</div>
@@ -450,9 +453,15 @@
 <section id="features">
   <div class="container">
     <div class="section-tag">Features</div>
-    <h2>Built for production.</h2>
-    <p class="section-sub">Everything you need to run persistent memory in production — out of the box.</p>
+    <h2>The shared brain your AI tools need.</h2>
+    <p class="section-sub">Cross-app memory by default. Production-grade from day one.</p>
     <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(167,139,250,0.15)">🌐</div>
+        <h3>Cross-app Memory</h3>
+        <p><code style="color:var(--primary-g);font-family:'JetBrains Mono',monospace;font-size:0.85em">user_id</code> is the only key. Memory written by your Claude app is instantly available to your GPT app — and any other LLM you build. ContextOS is the shared layer.</p>
+      </div>
 
       <div class="feature-card">
         <div class="feature-icon" style="background:rgba(124,58,237,0.12)">🧠</div>
@@ -482,12 +491,6 @@
         <div class="feature-icon" style="background:rgba(248,113,113,0.1)">🏢</div>
         <h3>Multi-tenancy</h3>
         <p>Full app isolation with per-app API keys. Admin API for app lifecycle, key rotation, usage stats, and GDPR bulk delete.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon" style="background:rgba(167,139,250,0.1)">🌐</div>
-        <h3>Cross-tool Memory</h3>
-        <p>user_id is the only key. Memory written by your Claude app is instantly available to your GPT app. ContextOS is the shared layer.</p>
       </div>
 
       <div class="feature-card">
@@ -527,6 +530,7 @@
         <button class="tab" onclick="showTab('write')">2. Write memory</button>
         <button class="tab" onclick="showTab('query')">3. Query memory</button>
         <button class="tab" onclick="showTab('inject')">4. Inject into LLM</button>
+        <button class="tab" onclick="showTab('crossapp')" style="border-color:var(--primary-g);color:var(--primary-g)">★ Two apps, one brain</button>
       </div>
 
       <div class="tab-content active" id="tab-setup">
@@ -604,6 +608,38 @@ python scripts/seed_api_key.py \
         json={<span class="str">"user_id"</span>: user_id, <span class="str">"conversation"</span>: <span class="str">f"User: {message}\nAssistant: {reply}"</span>},
         headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer sk-..."</span>})
     <span class="kw">return</span> reply</pre>
+      </div>
+
+      <div class="tab-content" id="tab-crossapp">
+        <pre><span class="cm"># Two apps. One ContextOS server. One brain.
+# App 1: Claude app writes Alice's memory</span>
+<span class="kw">import</span> httpx
+
+claude_app = httpx.Client(
+    base_url=<span class="str">"http://localhost:8000"</span>,
+    headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer sk-claude-app"</span>}
+)
+
+<span class="cm"># Alice tells your Claude app she prefers async Python</span>
+claude_app.post(<span class="str">"/sessions"</span>, json={
+    <span class="str">"user_id"</span>: <span class="str">"alice"</span>,
+    <span class="str">"conversation"</span>: <span class="str">"User: I always use async Python and deploy on Fly.io\nAssistant: Got it."</span>
+})
+
+<span class="cm"># App 2: GPT app reads Alice's memory — written by the Claude app</span>
+gpt_app = httpx.Client(
+    base_url=<span class="str">"http://localhost:8000"</span>,
+    headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer sk-gpt-app"</span>}
+)
+
+mem = gpt_app.get(<span class="str">"/memory"</span>, params={
+    <span class="str">"user_id"</span>: <span class="str">"alice"</span>,
+    <span class="str">"q"</span>: <span class="str">"what does alice prefer?"</span>
+}).json()
+
+<span class="cm"># → "Relevant context: [preference] User prefers async Python. Deploys on Fly.io."
+# Alice never re-introduced herself. Your GPT app already knows her.</span>
+print(mem[<span class="str">"prompt_block"</span>])</pre>
       </div>
     </div>
   </div>
@@ -706,7 +742,7 @@ python scripts/seed_api_key.py \
           </div>
         </div>
         <div class="install-box">
-          <span class="prompt">$</span> pip install ./sdk/python
+          <span class="prompt">$</span> pip install contextos  <span style="color:var(--muted)"># PyPI — coming soon; for now: pip install ./sdk/python</span>
         </div>
         <pre style="border-top:1px solid var(--border);margin:0"><span class="kw">from</span> contextos <span class="kw">import</span> ContextOS
 
@@ -807,12 +843,12 @@ system = <span class="str">f"You are helpful.\n\n{mem.prompt_block}"</span>
 <!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
 <footer>
   <p style="margin-bottom:0.5rem">
-    <strong style="color:var(--text)">ContextOS</strong> —
+    <strong style="color:var(--text)">ContextOS</strong> — Your AI tools share one brain. ·
     MIT License ·
     <a href="https://github.com/bythebug/context-os" target="_blank">github.com/bythebug/context-os</a>
   </p>
   <p style="color:var(--muted);font-size:0.8rem">
-    Built with FastAPI · Postgres · pgvector · Redis · sentence-transformers
+    Built with FastAPI · Postgres · pgvector · Redis · sentence-transformers · Runs on your machine.
   </p>
 </footer>
 

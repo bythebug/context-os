@@ -2,14 +2,23 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Model-agnostic memory infrastructure for LLM applications.
+**Your AI tools have different brains. ContextOS gives them one.**
 
 **GitHub:** [github.com/bythebug/context-os](https://github.com/bythebug/context-os)
 
-Any AI client — Claude, GPT, a custom agent, a terminal tool — calls two endpoints:
-write after a session, query before the next one. ContextOS extracts meaningful memory
-fragments, stores them, and returns the top-k most relevant as a ready-to-inject system
-prompt block. The model changes. The memory doesn't.
+Claude remembers Claude. ChatGPT remembers ChatGPT. Your custom agent remembers nothing.
+ContextOS is the shared memory layer that runs on your machine — any LLM reads from it,
+any LLM writes to it. `user_id` is the only key: memory written by your Claude app is
+instantly available to your GPT app. Your data. No vendor lock-in.
+
+```python
+# In your Claude app — write Alice's preferences
+client.post("/sessions", json={"user_id": "alice", "conversation": "..."})
+
+# In your GPT app — read what the Claude app learned about Alice
+mem = client.get("/memory", params={"user_id": "alice", "q": "what does alice prefer?"})
+# → Alice never re-introduced herself. Your GPT app already knows her.
+```
 
 ---
 
@@ -671,11 +680,18 @@ Full pipeline end-to-end. 5/5 smoke tests passing.
 - [x] Decay scoring — exponential time decay (30-day half-life) reduces weight of stale fragments
 - [x] Hybrid retrieval — BM25 (Postgres full-text) + cosine (pgvector) fused with Reciprocal Rank Fusion
 
+### M6 — Cross-app distribution (next)
+- [ ] Polish Python SDK to PyPI-ready state — `pip install contextos`
+- [ ] `contextos start` CLI command (thin wrapper around `docker compose up -d`)
+- [ ] Publish to PyPI and Docker Hub
+- [ ] 45-second screencast demo: two LLM apps sharing memory through ContextOS
+- [ ] TypeScript SDK — npm publish (after 3 pilot integrations)
+
 ---
 
 ## Current status
 
-**Branch:** `main` · **Stage:** M5 complete · **Health:** mypy 0 errors · ruff 0 issues · 5/5 smoke tests passing
+**Branch:** `main` · **Stage:** M5 complete, M6 in progress · **Health:** mypy 0 errors · ruff 0 issues · 5/5 smoke tests passing
 
 Running locally with `EXTRACTION_PROVIDER=mock` and `EMBEDDING_PROVIDER=local` —
 no API keys required for development.
