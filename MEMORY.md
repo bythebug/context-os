@@ -97,12 +97,11 @@ Pitch: *"You use Claude and ChatGPT. Do they know each other? ContextOS fixes th
 
 **Priority order:**
 
-1. **45-second screencast demo** — two LLM apps (Claude + GPT) sharing memory through ContextOS. This is the pitch. Record it before anything else.
-2. **`contextos start` CLI** — thin wrapper around `docker compose up -d`. Zero magic. Just makes the onboarding story work.
-3. **`pip install contextos`** — publish Python SDK to PyPI. Polish API, clean errors, README with 5-line example.
-4. **Docker Hub** — `docker pull bythebug/contextos`. GitHub Actions build + push on every release tag.
-5. **Talk to 5 developers** — show screencast, ask "Is this a problem you have?" Find them on HN, Twitter/X, LlamaIndex / LangChain Discord.
-6. **TypeScript npm** — deferred until 3 pilot integrations confirm demand.
+1. **Record 45-second screencast** — `demo/cross_app_demo.py` is the script. Run it, record, post.
+2. **Publish to PyPI** — needs a PyPI account + trusted publisher configured on GitHub. Then push a `v0.1.0` tag — GitHub Actions builds and publishes automatically.
+3. **Publish to Docker Hub** — needs `DOCKER_USERNAME` + `DOCKER_TOKEN` secrets in GitHub Settings → Secrets. Then push a `v0.1.0` tag — Actions builds and pushes automatically.
+4. **Talk to 5 developers** — show screencast, ask "Is this a problem you have?" HN, Twitter/X, LlamaIndex / LangChain Discord.
+5. **TypeScript npm** — deferred until 3 pilot integrations confirm demand.
 
 **Pivot trigger:** If fewer than 3 of 5 conversations show genuine interest (not polite interest), revisit framing.
 
@@ -110,14 +109,14 @@ Pitch: *"You use Claude and ChatGPT. Do they know each other? ContextOS fixes th
 
 ---
 
-## Code vs. pitch gaps (fix in M6)
+## Code vs. pitch gaps
 
 | Item | Pitch says | Code today |
 |---|---|---|
-| Server start | `contextos start` (CLI) | Manual `docker compose up -d` |
-| Python install | `pip install contextos` (PyPI) | `pip install ./sdk/python` (local) |
-| SDK class name | `Client` (design doc example) | `ContextOS` class |
-| TypeScript | `npm install contextos` | Local copy only |
+| Python install | `pip install contextos` (PyPI) | Not yet published — needs PyPI setup + `v0.1.0` tag push |
+| Docker Hub | `docker pull bythebug/contextos` | Not yet published — needs Docker Hub secrets + tag push |
+| SDK class name | `Client` (design doc example) | `ContextOS` class — fine, update design doc if needed |
+| TypeScript | `npm install contextos` | Local copy only — deferred |
 
 ---
 
@@ -202,7 +201,22 @@ Status: APPROVED · Adversarial review score: 8.5/10
 
 Update this section at the end of every session. Newest entries at top.
 
-### 2026-04-24
+### 2026-04-24 (M6 build)
+- [x] `contextos start` CLI — thin docker compose wrapper, bundled compose file in SDK package
+- [x] `contextos stop` and `contextos logs` CLI commands added
+- [x] `sdk/python/contextos/server/docker-compose.yml` — bundled server compose, pulls `bythebug/contextos` from Docker Hub
+- [x] `sdk/python/pyproject.toml` — full PyPI metadata (classifiers, keywords, authors, URLs)
+- [x] `sdk/python/README.md` — 5-line quickstart + cross-app story
+- [x] `demo/cross_app_demo.py` — runnable screencast script, tested end-to-end ✅
+- [x] `.github/workflows/publish-pypi.yml` — auto-publishes to PyPI on `v*` tag push
+- [x] `.github/workflows/docker-publish.yml` — auto-builds and pushes Docker image on `v*` tag push
+- [ ] **TODO: configure PyPI trusted publisher** (PyPI account → bythebug/context-os → GitHub Actions)
+- [ ] **TODO: add GitHub secrets** DOCKER_USERNAME + DOCKER_TOKEN
+- [ ] **TODO: push `v0.1.0` tag** to trigger both publish workflows
+- [ ] **TODO: record 45-second screencast** using `demo/cross_app_demo.py`
+- [ ] **TODO: post screencast** — HN Show HN, Twitter/X, LlamaIndex Discord
+
+### 2026-04-24 (earlier)
 - [x] Ran /office-hours — concluded cross-app personal memory is the unoccupied position
 - [x] New pitch agreed: "Your AI tools have different brains. ContextOS gives them one."
 - [x] Confirmed we are NOT competing with mem0 — different market entirely

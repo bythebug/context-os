@@ -1,0 +1,55 @@
+version: "3.9"
+
+# ContextOS server — pulled from Docker Hub, no source clone needed.
+# Started by `contextos start`. Stopped by `contextos stop`.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contextos
+      POSTGRES_PASSWORD: contextos
+      POSTGRES_DB: contextos
+    ports:
+      - "5433:5432"
+    volumes:
+      - contextos_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contextos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    image: bythebug/contextos:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://contextos:contextos@postgres:5432/contextos
+      REDIS_URL: redis://redis:6379
+      EXTRACTION_PROVIDER: ${EXTRACTION_PROVIDER:-mock}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  contextos_postgres:
