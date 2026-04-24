@@ -1,6 +1,10 @@
 # ContextOS
 
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Model-agnostic memory infrastructure for LLM applications.
+
+**GitHub:** [github.com/bythebug/contextos](https://github.com/bythebug/contextos)
 
 Any AI client — Claude, GPT, a custom agent, a terminal tool — calls two endpoints:
 write after a session, query before the next one. ContextOS extracts meaningful memory
