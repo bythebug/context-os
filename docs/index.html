@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ContextOS — Memory Infrastructure for LLM Applications</title>
+  <meta name="description" content="Model-agnostic memory infrastructure for LLM applications. Any AI client writes memory after a session, queries before the next one." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #08090e;
+      --surface:   #0f1017;
+      --surface2:  #161821;
+      --border:    #1e2030;
+      --border2:   #2a2d3e;
+      --primary:   #7c3aed;
+      --primary-g: #9f5eff;
+      --cyan:      #22d3ee;
+      --green:     #34d399;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --muted2:    #94a3b8;
+      --radius:    12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    /* ── NAV ─────────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem;
+      height: 60px;
+      background: rgba(8,9,14,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-weight: 700; font-size: 1.1rem; color: var(--text);
+      text-decoration: none; letter-spacing: -0.02em;
+    }
+    .nav-logo span { color: var(--primary-g); }
+    .nav-links { display: flex; gap: 1.8rem; list-style: none; }
+    .nav-links a {
+      color: var(--muted2); text-decoration: none; font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--primary); color: #fff; padding: 0.45rem 1.1rem;
+      border-radius: 8px; text-decoration: none; font-size: 0.875rem;
+      font-weight: 500; transition: background 0.2s;
+    }
+    .nav-cta:hover { background: var(--primary-g); }
+
+    /* ── HERO ────────────────────────────────────────────────────────────── */
+    .hero {
+      position: relative; overflow: hidden;
+      padding: 7rem 2rem 6rem;
+      text-align: center;
+    }
+    .hero-glow {
+      position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+      width: 700px; height: 500px;
+      background: radial-gradient(ellipse at center, rgba(124,58,237,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(124,58,237,0.12); border: 1px solid rgba(124,58,237,0.3);
+      color: var(--primary-g); padding: 0.3rem 0.85rem;
+      border-radius: 999px; font-size: 0.8rem; font-weight: 500;
+      margin-bottom: 1.5rem;
+    }
+    .badge-dot { width: 6px; height: 6px; background: var(--primary-g); border-radius: 50%; }
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 700; letter-spacing: -0.03em;
+      line-height: 1.1; margin-bottom: 1.25rem;
+    }
+    h1 .grad {
+      background: linear-gradient(135deg, #a78bfa 0%, #22d3ee 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      max-width: 580px; margin: 0 auto 2.5rem;
+      color: var(--muted2); font-size: 1.15rem; line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.7rem 1.5rem; border-radius: 9px;
+      font-size: 0.9rem; font-weight: 500; text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--primary); color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-g); transform: translateY(-1px); }
+    .btn-outline {
+      border: 1px solid var(--border2); color: var(--text);
+      background: var(--surface);
+    }
+    .btn-outline:hover { border-color: var(--border2); background: var(--surface2); }
+
+    /* ── FLOW DIAGRAM ────────────────────────────────────────────────────── */
+    .flow {
+      max-width: 820px; margin: 4rem auto 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.5rem 2rem;
+    }
+    .flow-row {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.6rem 0;
+    }
+    .flow-row + .flow-row { border-top: 1px solid var(--border); }
+    .flow-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem; color: var(--muted); white-space: nowrap;
+      width: 180px; flex-shrink: 0;
+    }
+    .flow-arrow { color: var(--muted); font-size: 0.9rem; }
+    .flow-steps { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .flow-step {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 6px; padding: 0.25rem 0.6rem;
+      font-size: 0.78rem; font-family: 'JetBrains Mono', monospace;
+    }
+    .flow-step.hl { border-color: rgba(124,58,237,0.4); color: var(--primary-g); }
+    .flow-sep { color: var(--muted); font-size: 0.8rem; }
+
+    /* ── SECTION WRAPPER ─────────────────────────────────────────────────── */
+    section { padding: 5rem 2rem; }
+    .container { max-width: 1080px; margin: 0 auto; }
+    .section-tag {
+      display: inline-block;
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--primary-g);
+      margin-bottom: 0.75rem;
+    }
+    h2 {
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      font-weight: 700; letter-spacing: -0.025em;
+      margin-bottom: 1rem;
+    }
+    .section-sub {
+      color: var(--muted2); max-width: 560px;
+      font-size: 1.05rem; margin-bottom: 3rem;
+    }
+
+    /* ── FEATURES GRID ───────────────────────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+    .feature-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: var(--border2); }
+    .feature-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; margin-bottom: 1rem;
+    }
+    .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .feature-card p { color: var(--muted2); font-size: 0.9rem; line-height: 1.6; }
+
+    /* ── HOW IT WORKS ────────────────────────────────────────────────────── */
+    .steps {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    }
+    .step-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.75rem;
+    }
+    .step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 8px;
+      background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3);
+      color: var(--primary-g); font-size: 0.75rem; font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .step-card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .step-card p { color: var(--muted2); font-size: 0.9rem; line-height: 1.6; }
+    .step-pipeline {
+      margin-top: 1rem;
+      display: flex; flex-direction: column; gap: 0.4rem;
+    }
+    .pipeline-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 0.8rem; font-family: 'JetBrains Mono', monospace;
+      color: var(--muted2);
+    }
+    .pipeline-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* ── CODE BLOCKS ─────────────────────────────────────────────────────── */
+    .code-tabs {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .tab-bar {
+      display: flex; border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .tab {
+      padding: 0.65rem 1.25rem;
+      font-size: 0.8rem; font-weight: 500;
+      color: var(--muted); cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s; border: none; background: none;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--primary-g); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    pre {
+      padding: 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem; line-height: 1.7;
+      overflow-x: auto;
+    }
+    .kw  { color: #c084fc; }
+    .fn  { color: #67e8f9; }
+    .str { color: #86efac; }
+    .cm  { color: #475569; }
+    .var { color: #fcd34d; }
+    .num { color: #fb923c; }
+
+    /* ── API TABLE ───────────────────────────────────────────────────────── */
+    .api-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+    .api-row {
+      display: grid;
+      grid-template-columns: 90px 1fr auto;
+      align-items: start; gap: 1rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .api-row:hover { border-color: var(--border2); }
+    .method {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; font-weight: 700;
+      padding: 0.2rem 0.5rem; border-radius: 5px;
+      text-align: center; letter-spacing: 0.05em;
+    }
+    .method.get    { background: rgba(52,211,153,0.1); color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+    .method.post   { background: rgba(96,165,250,0.1); color: #60a5fa; border: 1px solid rgba(96,165,250,0.2); }
+    .method.delete { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+    .api-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem; color: var(--text); margin-bottom: 0.2rem;
+    }
+    .api-desc { color: var(--muted2); font-size: 0.85rem; }
+    .api-badge {
+      font-size: 0.7rem; padding: 0.15rem 0.5rem;
+      border-radius: 4px; white-space: nowrap;
+      background: rgba(124,58,237,0.1); color: var(--primary-g);
+      border: 1px solid rgba(124,58,237,0.2);
+    }
+
+    /* ── ARCHITECTURE ────────────────────────────────────────────────────── */
+    .arch-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+    .arch-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem;
+    }
+    .arch-card .layer {
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem;
+    }
+    .arch-card .tech {
+      font-size: 1rem; font-weight: 600; margin-bottom: 0.3rem;
+    }
+    .arch-card .reason { color: var(--muted2); font-size: 0.82rem; line-height: 1.5; }
+
+    /* ── SDK SECTION ─────────────────────────────────────────────────────── */
+    .sdk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .sdk-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .sdk-header {
+      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sdk-icon { font-size: 1.4rem; }
+    .sdk-header h3 { font-size: 1rem; font-weight: 600; }
+    .sdk-header p { color: var(--muted2); font-size: 0.82rem; }
+
+    /* ── INSTALL BOX ─────────────────────────────────────────────────────── */
+    .install-box {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.75rem 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem; color: var(--green);
+      display: flex; align-items: center; gap: 0.6rem;
+      margin: 1.25rem 1.5rem;
+    }
+    .install-box .prompt { color: var(--muted); }
+
+    /* ── FOOTER ──────────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+      text-align: center; color: var(--muted);
+      font-size: 0.875rem;
+    }
+    footer a { color: var(--muted2); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    /* ── DIVIDER ─────────────────────────────────────────────────────────── */
+    .divider {
+      height: 1px; background: var(--border);
+      max-width: 1080px; margin: 0 auto;
+    }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .steps { grid-template-columns: 1fr; }
+      .sdk-grid { grid-template-columns: 1fr; }
+      .api-row { grid-template-columns: 80px 1fr; }
+      .api-badge { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ───────────────────────────────────────────────────────────────── -->
+<nav>
+  <a class="nav-logo" href="#">Context<span>OS</span></a>
+  <ul class="nav-links">
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#quickstart">Quickstart</a></li>
+    <li><a href="#api">API</a></li>
+    <li><a href="#sdks">SDKs</a></li>
+  </ul>
+  <a class="nav-cta" href="https://github.com/bythebug/context-os" target="_blank">GitHub →</a>
+</nav>
+
+<!-- ── HERO ──────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="badge"><span class="badge-dot"></span> Open Source · MIT License</div>
+  <h1>Memory infrastructure<br>for <span class="grad">LLM applications</span></h1>
+  <p class="hero-sub">
+    ContextOS decouples memory from the model. Any AI client — Claude, GPT, a custom agent —
+    calls two endpoints. The model changes. The memory doesn't.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="#quickstart">Get started</a>
+    <a class="btn btn-outline" href="https://github.com/bythebug/context-os" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+
+  <!-- Pipeline diagram -->
+  <div class="flow">
+    <div class="flow-row">
+      <span class="flow-label">After conversation</span>
+      <span class="flow-arrow">→</span>
+      <div class="flow-steps">
+        <span class="flow-step hl">POST /sessions</span>
+        <span class="flow-sep">→</span>
+        <span class="flow-step">extract</span>
+        <span class="flow-sep">→</span>
+        <span class="flow-step">embed</span>
+        <span class="flow-sep">→</span>
+        <span class="flow-step">store</span>
+      </div>
+    </div>
+    <div class="flow-row">
+      <span class="flow-label">Before LLM call</span>
+      <span class="flow-arrow">→</span>
+      <div class="flow-steps">
+        <span class="flow-step hl">GET /memory</span>
+        <span class="flow-sep">→</span>
+        <span class="flow-step">hybrid search</span>
+        <span class="flow-sep">→</span>
+        <span class="flow-step">re-rank</span>
+        <span class="flow-sep">→</span>
+        <span class="flow-step">prompt_block</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── HOW IT WORKS ───────────────────────────────────────────────────────── -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="section-tag">How it works</div>
+    <h2>Two endpoints. Persistent memory.</h2>
+    <p class="section-sub">
+      ContextOS sits outside your LLM stack. Your app calls it at exactly two points — nothing else changes.
+    </p>
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <h3>Write after a conversation</h3>
+        <p>POST the conversation text. ContextOS extracts discrete memory fragments using an LLM, embeds them, deduplicates, and stores. Returns 202 immediately — extraction runs in the background.</p>
+        <div class="step-pipeline">
+          <div class="pipeline-item"><div class="pipeline-dot" style="background:#60a5fa"></div>LLM extraction (Anthropic / OpenAI / mock)</div>
+          <div class="pipeline-item"><div class="pipeline-dot" style="background:#a78bfa"></div>Embed (local sentence-transformers or OpenAI)</div>
+          <div class="pipeline-item"><div class="pipeline-dot" style="background:#34d399"></div>Deduplicate + consolidate near-matches</div>
+          <div class="pipeline-item"><div class="pipeline-dot" style="background:#22d3ee"></div>Store in Postgres + pgvector</div>
+        </div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <h3>Query before an LLM call</h3>
+        <p>GET memory for a user with your query string. ContextOS runs hybrid search, applies decay scoring, and returns top-k fragments plus a <code style="color:var(--primary-g);font-family:'JetBrains Mono',monospace;font-size:0.8em">prompt_block</code> ready to inject into your system prompt.</p>
+        <div class="step-pipeline">
+          <div class="pipeline-item"><div class="pipeline-dot" style="background:#60a5fa"></div>Redis cache check (60s TTL)</div>
+          <div class="pipeline-item"><div class="pipeline-dot" style="background:#a78bfa"></div>BM25 (Postgres FTS) + cosine vector search</div>
+          <div class="pipeline-item"><div class="pipeline-dot" style="background:#34d399"></div>Reciprocal Rank Fusion (k=60)</div>
+          <div class="pipeline-item"><div class="pipeline-dot" style="background:#22d3ee"></div>Re-rank: similarity + importance + decay</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── FEATURES ───────────────────────────────────────────────────────────── -->
+<section id="features">
+  <div class="container">
+    <div class="section-tag">Features</div>
+    <h2>Built for production.</h2>
+    <p class="section-sub">Everything you need to run persistent memory in production — out of the box.</p>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(124,58,237,0.12)">🧠</div>
+        <h3>Hybrid Retrieval</h3>
+        <p>BM25 full-text search combined with pgvector cosine similarity, fused with Reciprocal Rank Fusion. Catches what pure vector search misses.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(34,211,238,0.1)">⚡</div>
+        <h3>Redis Hot Cache</h3>
+        <p>GET /memory results cached in Redis with a 60s TTL, keyed by SHA-256 of user + query + params. Repeat queries are instant.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(52,211,153,0.1)">🔀</div>
+        <h3>Memory Consolidation</h3>
+        <p>Near-match fragments (cosine 0.75–0.94) automatically supersede outdated ones. Contradictions resolve in favor of the newest information.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(251,146,60,0.1)">📉</div>
+        <h3>Decay Scoring</h3>
+        <p>Exponential time decay with a 30-day half-life. Stale fragments lose weight automatically — fresher memories surface first.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(248,113,113,0.1)">🏢</div>
+        <h3>Multi-tenancy</h3>
+        <p>Full app isolation with per-app API keys. Admin API for app lifecycle, key rotation, usage stats, and GDPR bulk delete.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(167,139,250,0.1)">🌐</div>
+        <h3>Cross-tool Memory</h3>
+        <p>user_id is the only key. Memory written by your Claude app is instantly available to your GPT app. ContextOS is the shared layer.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(96,165,250,0.1)">🔁</div>
+        <h3>Retry + Dead Letter</h3>
+        <p>Extraction retries with exponential backoff (3×, 2s / 4s / 8s). Exhausted jobs land in a dead-letter table for inspection and replay.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(52,211,153,0.1)">📊</div>
+        <h3>Structured Logging</h3>
+        <p>JSON logs via structlog with X-Request-ID tracing on every request. Trace a session write through extraction, embedding, and storage.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(251,146,60,0.1)">🛡️</div>
+        <h3>Rate Limiting</h3>
+        <p>Per-API-key rate limits via slowapi. 60 req/min on writes, 120 req/min on reads. Falls back to IP if no key is present.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── QUICKSTART ─────────────────────────────────────────────────────────── -->
+<section id="quickstart">
+  <div class="container">
+    <div class="section-tag">Quickstart</div>
+    <h2>Up in three commands.</h2>
+    <p class="section-sub">No API keys needed for local dev — uses the mock extractor and local embeddings.</p>
+
+    <div class="code-tabs">
+      <div class="tab-bar">
+        <button class="tab active" onclick="showTab('setup')">1. Start stack</button>
+        <button class="tab" onclick="showTab('write')">2. Write memory</button>
+        <button class="tab" onclick="showTab('query')">3. Query memory</button>
+        <button class="tab" onclick="showTab('inject')">4. Inject into LLM</button>
+      </div>
+
+      <div class="tab-content active" id="tab-setup">
+        <pre><span class="cm"># Clone and start the Docker stack</span>
+git clone https://github.com/bythebug/context-os
+<span class="kw">cd</span> context-os
+cp .env.example .env
+docker compose up -d
+
+<span class="cm"># Create your first API key</span>
+python scripts/seed_api_key.py \
+  --app-name <span class="str">"my-app"</span> \
+  --database-url postgresql://contextos:contextos@localhost:5433/contextos
+<span class="cm"># → API key: sk-...</span></pre>
+      </div>
+
+      <div class="tab-content" id="tab-write">
+        <pre><span class="kw">curl</span> -X POST http://localhost:8000/sessions \
+  -H <span class="str">"Authorization: Bearer sk-..."</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{
+    "user_id": "alice",
+    "conversation": "User: I prefer async Python and deploy on Fly.io\nAssistant: Got it.",
+    "source_client": "my-app"
+  }'</span>
+
+<span class="cm"># Response: 202 Accepted — extraction runs in background</span>
+{
+  <span class="str">"session_id"</span>: <span class="str">"uuid"</span>,
+  <span class="str">"status"</span>: <span class="str">"accepted"</span>
+}</pre>
+      </div>
+
+      <div class="tab-content" id="tab-query">
+        <pre><span class="kw">curl</span> <span class="str">"http://localhost:8000/memory?user_id=alice&q=deployment"</span> \
+  -H <span class="str">"Authorization: Bearer sk-..."</span>
+
+<span class="cm"># Response</span>
+{
+  <span class="str">"user_id"</span>: <span class="str">"alice"</span>,
+  <span class="str">"fragments"</span>: [
+    {
+      <span class="str">"content"</span>: <span class="str">"User deploys on Fly.io"</span>,
+      <span class="str">"type"</span>: <span class="str">"decision"</span>,
+      <span class="str">"importance"</span>: <span class="num">4</span>,
+      <span class="str">"score"</span>: <span class="num">0.89</span>
+    }
+  ],
+  <span class="str">"prompt_block"</span>: <span class="str">"Relevant context about this user:\n- [decision] User deploys on Fly.io (relevance: 0.89)"</span>
+}</pre>
+      </div>
+
+      <div class="tab-content" id="tab-inject">
+        <pre><span class="kw">import</span> httpx, anthropic
+
+<span class="kw">async def</span> <span class="fn">chat</span>(user_id, message):
+    <span class="cm"># 1. Fetch memory</span>
+    mem = httpx.get(
+        <span class="str">"http://localhost:8000/memory"</span>,
+        params={<span class="str">"user_id"</span>: user_id, <span class="str">"q"</span>: message},
+        headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer sk-..."</span>}
+    ).json()
+
+    <span class="cm"># 2. Inject into system prompt — one line</span>
+    system = <span class="str">f"You are helpful.\n\n{mem['prompt_block']}"</span>
+
+    <span class="cm"># 3. Call LLM — nothing else changes</span>
+    reply = anthropic.Anthropic().messages.create(
+        model=<span class="str">"claude-opus-4-6"</span>, system=system,
+        messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: message}]
+    ).content[<span class="num">0</span>].text
+
+    <span class="cm"># 4. Save conversation</span>
+    httpx.post(<span class="str">"http://localhost:8000/sessions"</span>,
+        json={<span class="str">"user_id"</span>: user_id, <span class="str">"conversation"</span>: <span class="str">f"User: {message}\nAssistant: {reply}"</span>},
+        headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer sk-..."</span>})
+    <span class="kw">return</span> reply</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── API REFERENCE ──────────────────────────────────────────────────────── -->
+<section id="api">
+  <div class="container">
+    <div class="section-tag">API Reference</div>
+    <h2>Simple, RESTful endpoints.</h2>
+    <p class="section-sub">All endpoints require <code style="color:var(--primary-g);font-family:'JetBrains Mono',monospace;font-size:0.85em">Authorization: Bearer &lt;api-key&gt;</code>. Admin endpoints require <code style="color:var(--primary-g);font-family:'JetBrains Mono',monospace;font-size:0.85em">Admin-Key</code> header.</p>
+
+    <div class="api-grid">
+      <div class="api-row">
+        <span class="method post">POST</span>
+        <div>
+          <div class="api-path">/sessions</div>
+          <div class="api-desc">Ingest a conversation. Extraction runs async in the background. Returns 202 immediately.</div>
+        </div>
+        <span class="api-badge">60 req/min</span>
+      </div>
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div>
+          <div class="api-path">/memory</div>
+          <div class="api-desc">Retrieve top-k relevant fragments for a user. Params: user_id, q, top_k, scope, type.</div>
+        </div>
+        <span class="api-badge">120 req/min</span>
+      </div>
+      <div class="api-row">
+        <span class="method delete">DELETE</span>
+        <div>
+          <div class="api-path">/memory/:id</div>
+          <div class="api-desc">Delete a specific fragment by ID. Scoped to the calling app.</div>
+        </div>
+        <span class="api-badge">app-scoped</span>
+      </div>
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div>
+          <div class="api-path">/health</div>
+          <div class="api-desc">Check service health. Returns status of Postgres and Redis.</div>
+        </div>
+        <span class="api-badge">public</span>
+      </div>
+      <div class="api-row">
+        <span class="method post">POST</span>
+        <div>
+          <div class="api-path">/admin/apps</div>
+          <div class="api-desc">Create an app. Returns app ID used to issue API keys.</div>
+        </div>
+        <span class="api-badge">Admin-Key</span>
+      </div>
+      <div class="api-row">
+        <span class="method post">POST</span>
+        <div>
+          <div class="api-path">/admin/apps/:id/keys</div>
+          <div class="api-desc">Issue a new API key. Raw key returned once — store it immediately.</div>
+        </div>
+        <span class="api-badge">Admin-Key</span>
+      </div>
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div>
+          <div class="api-path">/admin/apps/:id/usage</div>
+          <div class="api-desc">Fragment count, unique users, dead-letter count, and last active time.</div>
+        </div>
+        <span class="api-badge">Admin-Key</span>
+      </div>
+      <div class="api-row">
+        <span class="method delete">DELETE</span>
+        <div>
+          <div class="api-path">/admin/memory</div>
+          <div class="api-desc">GDPR bulk delete — wipe all fragments for a user_id, optionally scoped to one app.</div>
+        </div>
+        <span class="api-badge">Admin-Key</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── SDKS ───────────────────────────────────────────────────────────────── -->
+<section id="sdks">
+  <div class="container">
+    <div class="section-tag">SDKs</div>
+    <h2>Native clients for every stack.</h2>
+    <p class="section-sub">Sync and async Python. Typed TypeScript with zero runtime dependencies.</p>
+    <div class="sdk-grid">
+
+      <div class="sdk-card">
+        <div class="sdk-header">
+          <div class="sdk-icon">🐍</div>
+          <div>
+            <h3>Python SDK</h3>
+            <p>Sync + async · httpx only · Python 3.9+</p>
+          </div>
+        </div>
+        <div class="install-box">
+          <span class="prompt">$</span> pip install ./sdk/python
+        </div>
+        <pre style="border-top:1px solid var(--border);margin:0"><span class="kw">from</span> contextos <span class="kw">import</span> ContextOS
+
+client = <span class="fn">ContextOS</span>(api_key=<span class="str">"sk-..."</span>)
+
+<span class="cm"># Write</span>
+client.<span class="fn">write</span>(user_id=<span class="str">"alice"</span>, conversation=<span class="var">text</span>)
+
+<span class="cm"># Query</span>
+mem = client.<span class="fn">query</span>(user_id=<span class="str">"alice"</span>, q=<span class="var">message</span>)
+system = <span class="str">f"You are helpful.\n\n{mem.prompt_block}"</span>
+
+<span class="cm"># Async versions: awrite(), aquery(), adelete()</span></pre>
+      </div>
+
+      <div class="sdk-card">
+        <div class="sdk-header">
+          <div class="sdk-icon">🟦</div>
+          <div>
+            <h3>TypeScript SDK</h3>
+            <p>Zero runtime deps · Node.js + edge runtimes</p>
+          </div>
+        </div>
+        <div class="install-box">
+          <span class="prompt">$</span> cp sdk/typescript/src/index.ts ./lib/
+        </div>
+        <pre style="border-top:1px solid var(--border);margin:0"><span class="kw">import</span> { ContextOS } <span class="kw">from</span> <span class="str">"./lib/contextos"</span>
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">ContextOS</span>({ apiKey: <span class="str">"sk-..."</span> })
+
+<span class="cm">// Write</span>
+<span class="kw">await</span> client.<span class="fn">write</span>(<span class="str">"alice"</span>, conversation)
+
+<span class="cm">// Query</span>
+<span class="kw">const</span> mem = <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">"alice"</span>, message)
+<span class="kw">const</span> system = <span class="str">`You are helpful.\n\n${mem.prompt_block}`</span></pre>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── ARCHITECTURE ───────────────────────────────────────────────────────── -->
+<section id="architecture">
+  <div class="container">
+    <div class="section-tag">Architecture</div>
+    <h2>One stack. No extra infra.</h2>
+    <p class="section-sub">Postgres handles both relational data and vector search — no separate vector database.</p>
+    <div class="arch-grid">
+      <div class="arch-card">
+        <div class="layer">API</div>
+        <div class="tech">FastAPI</div>
+        <div class="reason">Async Python, automatic OpenAPI docs, native background tasks.</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer">Vector store</div>
+        <div class="tech">Postgres + pgvector</div>
+        <div class="reason">Single DB for relational + vector. No Pinecone, no Weaviate.</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer">Cache</div>
+        <div class="tech">Redis</div>
+        <div class="reason">60s TTL on GET /memory. Repeat queries skip embedding + DB entirely.</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer">Embeddings</div>
+        <div class="tech">Local / OpenAI</div>
+        <div class="reason">sentence-transformers (384-dim) for dev. OpenAI (1536-dim) for production.</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer">Extraction</div>
+        <div class="tech">Anthropic / OpenAI / Mock</div>
+        <div class="reason">Mock provider for local dev — no API keys needed.</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer">Migrations</div>
+        <div class="tech">Alembic</div>
+        <div class="reason">Versioned schema changes, async-compatible, 3 revisions so far.</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer">Deploy</div>
+        <div class="tech">Fly.io / Docker</div>
+        <div class="reason">fly.toml included. docker-compose.yml for local development.</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer">Auth</div>
+        <div class="tech">Bearer API key</div>
+        <div class="reason">SHA-256 hashed. OpenAI-familiar pattern. Raw key shown once on creation.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+<footer>
+  <p style="margin-bottom:0.5rem">
+    <strong style="color:var(--text)">ContextOS</strong> —
+    MIT License ·
+    <a href="https://github.com/bythebug/context-os" target="_blank">github.com/bythebug/context-os</a>
+  </p>
+  <p style="color:var(--muted);font-size:0.8rem">
+    Built with FastAPI · Postgres · pgvector · Redis · sentence-transformers
+  </p>
+</footer>
+
+<script>
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.target.classList.add('active');
+  }
+</script>
+
+</body>
+</html>
