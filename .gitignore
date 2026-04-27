@@ -44,3 +44,6 @@ sdk/typescript/dist/
 *.log
 logs/
 .gstack/
+
+# ── Private / sensitive docs ──────────────────────────────────────────────────
+yc-application.md

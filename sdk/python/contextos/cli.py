@@ -11,6 +11,7 @@ Usage:
     contextos keys delete <id>   # delete a key
 """
 import hashlib
+import json
 import os
 import secrets
 import subprocess
@@ -43,9 +44,102 @@ def _compose(*args: str, capture: bool = False) -> subprocess.CompletedProcess:
     return subprocess.run(cmd)
 
 
+_CONFIG_DIR = Path.home() / ".contextos"
+_CONFIG_FILE = _CONFIG_DIR / "config.json"
+
+
 @click.group()
 def cli():
     """ContextOS — cross-app personal memory for AI tools."""
+
+
+# ── Init wizard ────────────────────────────────────────────────────────────
+
+@cli.command()
+def init():
+    """Set up ContextOS: start server, create API key, save config."""
+    click.echo("")
+    click.echo(click.style("ContextOS setup", bold=True))
+    click.echo("─" * 40)
+
+    # 1. Check Docker
+    _check_docker()
+    click.echo("✓ Docker is running")
+
+    # 2. Start server
+    click.echo("Starting server...")
+    result = subprocess.run(
+        ["docker", "compose", "-f", str(_COMPOSE_FILE), "-p", _PROJECT_NAME,
+         "up", "-d", "--pull", "always"],
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        click.echo("Failed to start server.", err=True)
+        sys.exit(1)
+    click.echo("✓ Server running at http://localhost:8000")
+
+    # 3. Wait for health
+    import time
+    import httpx
+    for _ in range(15):
+        try:
+            r = httpx.get("http://localhost:8000/health", timeout=2.0)
+            if r.json().get("status") == "ok":
+                break
+        except Exception:
+            pass
+        time.sleep(1)
+    else:
+        click.echo("Server did not become healthy in time. Try `contextos health`.", err=True)
+        sys.exit(1)
+
+    # 4. Get or prompt for app name
+    app_name = click.prompt("App name", default="myapp")
+    db_url = "postgresql://contextos:contextos@localhost:5433/contextos"
+
+    # 5. Create API key
+    _require_sqlalchemy()
+    import sqlalchemy
+    from sqlalchemy import text
+
+    engine = sqlalchemy.create_engine(db_url)
+    raw_key = "sk-" + secrets.token_urlsafe(32)
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT id FROM apps WHERE name = :name"), {"name": app_name}
+        ).fetchone()
+        if row:
+            app_id = row[0]
+        else:
+            app_id = conn.execute(
+                text("INSERT INTO apps (name) VALUES (:name) RETURNING id"),
+                {"name": app_name},
+            ).scalar()
+        conn.execute(
+            text("INSERT INTO api_keys (app_id, key_hash) VALUES (:app_id, :key_hash)"),
+            {"app_id": app_id, "key_hash": key_hash},
+        )
+
+    # 6. Save config
+    _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    config = {"api_key": raw_key, "url": "http://localhost:8000", "app_name": app_name}
+    _CONFIG_FILE.write_text(json.dumps(config, indent=2))
+
+    # 7. Done
+    click.echo("")
+    click.echo(click.style("✓ ContextOS is ready.", fg="green", bold=True))
+    click.echo(f"  API key saved to {_CONFIG_FILE}")
+    click.echo("")
+    click.echo("Add 2 lines to your app:")
+    click.echo("")
+    click.echo(click.style("  import contextos", fg="cyan"))
+    click.echo(click.style(f'  contextos.init()  # reads config from {_CONFIG_FILE}', fg="cyan"))
+    click.echo(click.style('  contextos.set_user("alice")  # set before each LLM call', fg="cyan"))
+    click.echo("")
+    click.echo("That's it. All Anthropic and OpenAI calls are now captured automatically.")
+    click.echo("")
 
 
 # ── Server commands ────────────────────────────────────────────────────────

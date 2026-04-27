@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "contextos"
+name = "contextos-mem"
 version = "0.1.0"
 description = "Cross-app personal memory for AI tools. Your Claude, GPT, and custom agents share one memory layer."
 readme = "README.md"

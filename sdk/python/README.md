@@ -9,34 +9,40 @@ any LLM writes to it.
 ## Install
 
 ```bash
-pip install contextos
+pip install "contextos[cli]"
 ```
 
-## Start the server
+## One-time setup
 
 ```bash
-pip install "contextos[cli]"
-contextos start
+contextos init
 ```
 
-Requires Docker. Starts Postgres, Redis, and the ContextOS API on `localhost:8000`.
+This starts the server, creates an API key, and saves config to `~/.contextos/config.json`. Takes 30 seconds.
 
-## 5-line quickstart
+## Add 2 lines to your existing app
 
 ```python
-from contextos import ContextOS
+import contextos
+import anthropic
 
-client = ContextOS(api_key="sk-...")
+contextos.init()             # reads config saved by `contextos init`
+contextos.set_user("alice")  # set before each LLM call
 
-# After a conversation — write memory
-client.write(user_id="alice", conversation="User: I prefer async Python.\nAssistant: Got it.")
-
-# Before the next LLM call — read memory
-memory = client.query(user_id="alice", q=user_message)
-system_prompt = f"You are helpful.\n\n{memory.prompt_block}"
+# Your existing code — UNCHANGED
+response = anthropic.Anthropic().messages.create(
+    model="claude-opus-4-6",
+    system="You are helpful.",
+    messages=[{"role": "user", "content": message}]
+)
+# ContextOS automatically:
+#   → injects Alice's memory into the system prompt
+#   → captures the conversation in the background
 ```
 
-## The cross-app story
+Works with OpenAI too — zero changes to your `openai.OpenAI().chat.completions.create(...)` calls.
+
+## Manual API (full control)
 
 ```python
 # In your Claude app

@@ -109,6 +109,26 @@ Pitch: *"You use Claude and ChatGPT. Do they know each other? ContextOS fixes th
 
 ---
 
+## Consumer path (non-developer users) — future track
+
+**Current reality:** ContextOS is developer-only. A non-developer cannot use it with Claude.ai or ChatGPT because those are hosted apps — you don't control their system prompt, so memory can't be injected automatically.
+
+| App | Works today? | Why |
+|---|---|---|
+| Claude.ai / ChatGPT (web) | No | Hosted — system prompt is locked |
+| Your own AI app | Yes | You control the code |
+| Claude Code | Yes | You control CLAUDE.md |
+
+**What would unlock non-developer use:**
+
+- **Browser extension** — intercepts Claude.ai / ChatGPT conversations, injects memory block at the top of each message. Technically possible. ToS grey area. Biggest consumer reach.
+- **Desktop app** — standalone chat UI that wraps Claude/GPT API through ContextOS. Non-developers use the app instead of Claude.ai.
+- **Manual workaround (today)** — copy `prompt_block` output into Claude.ai Custom Instructions once a week. Not automatic.
+
+**Decision (2026-04-24):** Stay developer-first for YC application. Consumer path (browser extension or desktop app) is a second product track — build it after developer traction is proven. YC will ask "can a non-developer use this?" — honest answer is no today, roadmap answer is browser extension.
+
+---
+
 ## Code vs. pitch gaps
 
 | Item | Pitch says | Code today |
